@@ -4,7 +4,8 @@
   "description": "EasyEDA Pro API Skill — WebSocket bridge & API reference",
   "type": "module",
   "scripts": {
-    "server": "node scripts/bridge-server.mjs"
+    "server": "node scripts/bridge-server.mjs",
+    "autoroute:freerouting": "node scripts/freerouting-autoroute.mjs"
   },
   "dependencies": {
     "ws": "^8.21.3"
