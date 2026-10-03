@@ -196,6 +196,7 @@ The full API reference is in the [references/](references/) directory:
 If the user needs to analyze or modify EasyEDA document source directly instead of using the API, use the documents in the [format/](format/) directory.
 
 - [format/index.md](format/index.md) — Overview of the EasyEDA document source format references and version notes
+- [format/FORMATLOG-v3-v4.md](format/FORMATLOG-v3-v4.md) — **Read before editing source files.** These docs are V3; current clients write V4 (e.g. PCB coordinates in mil, JSON booleans). For generating/validating V4 data use the official [easyeda-format-skill](https://github.com/easyeda/easyeda-format-skill)
 - `format/project/` — Project source structure, metadata, blobs, variants, and grouping data
 - `format/schematic/` — Schematic source format, including structure, wires, shapes, pins, components, and tables
 - `format/pcb/` — PCB source format, including primitives, pads and vias, shapes, text, attributes, rules, and panel data

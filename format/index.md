@@ -1,5 +1,7 @@
 # EasyEDA File Format
 
+> **The docs in this directory describe the V3 format (2025.10.21 spec). Current clients write V4.** The main differences that matter when editing source directly: PCB coordinates are in **mil** (not 0.01 inch), booleans are JSON `true`/`false`, `DOCHEAD` carries `ticket`, `updateTime` and `version`, new docTypes exist, and eprj3 local projects store a `yAxisDirection` flag. See [FORMATLOG-v3-v4.md](FORMATLOG-v3-v4.md) for the full list. To generate and validate V4 data, install the official [easyeda-format-skill](https://github.com/easyeda/easyeda-format-skill) alongside this skill (it ships per-primitive JSON Schemas and a `validate.js` checker).
+
 ## V2.2 File Format
 
 V2.2 file format: [lceda-pro-file-format-v2.2_2022.12.15.zip](https://image.lceda.cn/files/lceda-pro-file-format-v2.2_2022.12.15.zip)
@@ -127,7 +129,9 @@ The eventual consistency framework compares the `ticket` field and keeps the rec
 { "type": "TYPE", "id": "UUID", "ticket": 1}||{"data": 2}|
 ```
 
-Then the `client` field in the document header is compared, and the record with the smaller client identifier is kept. In the example above, the record with `data` 1 is kept.
+Then the `client` field in the document header is compared, and the record with the **lexicographically larger** client identifier is kept. In the example above, the record with `data` 2 is kept.
+
+> Correction: earlier versions of this page said the smaller `client` wins. The official [easyeda-format-skill](https://github.com/easyeda/easyeda-format-skill) states that this is the opposite of the implementation: the comparison key is document + normalized id (`type` is not compared), the larger `ticket` wins, and on a tie the lexicographically larger `client` wins.
 
 #### Deletion
 
