@@ -56,6 +56,20 @@ const pendingRequests = new Map();
 let activeEdaWindowId = null;
 
 const REQUEST_TIMEOUT_MS = 30_000;
+// 单次请求可通过 timeout 字段覆盖默认超时（与官方 easyeda-pro CLI 的 --timeout 上限一致）
+// 自动布线、批量操作等耗时任务请传入更大的 timeout，例如 600000
+const MAX_REQUEST_TIMEOUT_MS = 1_800_000;
+
+/**
+ * Normalize a per-request timeout value
+ * @param {unknown} value - Requested timeout in ms
+ * @returns {number}
+ */
+function resolveTimeout(value) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return REQUEST_TIMEOUT_MS;
+  return Math.min(Math.floor(ms), MAX_REQUEST_TIMEOUT_MS);
+}
 
 // ─── Port Detection ─────────────────────────────────────────────────
 
@@ -210,13 +224,14 @@ const httpServer = createServer(async (req, res) => {
       const payload = JSON.parse(body);
       const code = payload.code;
       const windowId = payload.windowId; // optional, uses active window if not specified
+      const timeout = payload.timeout; // optional, ms (1-1800000), default 30000
       if (!code || typeof code !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Missing "code" field (string)' }));
         return;
       }
 
-      const result = await executeOnEda(code, windowId);
+      const result = await executeOnEda(code, windowId, timeout);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, result, windowId: windowId || activeEdaWindowId }));
     } catch (err) {
@@ -300,7 +315,7 @@ wss.on('connection', (ws, req) => {
         const msg = JSON.parse(raw.toString());
         if (msg.type === 'execute') {
           try {
-            const result = await executeOnEda(msg.code, msg.windowId);
+            const result = await executeOnEda(msg.code, msg.windowId, msg.timeout);
             ws.send(JSON.stringify({
               type: 'result',
               id: msg.id,
@@ -355,9 +370,10 @@ function sendToEda(windowId, msg) {
  * Execute JavaScript code on the EDA client and return the result
  * @param {string} code - JavaScript code to execute in EDA context
  * @param {string} [windowId] - Specific EDA window ID (uses active window if not specified)
+ * @param {number} [timeout] - Request timeout in ms (default 30000, max 1800000)
  * @returns {Promise<any>}
  */
-function executeOnEda(code, windowId) {
+function executeOnEda(code, windowId, timeout) {
   return new Promise((resolve, reject) => {
     const targetWindowId = windowId || activeEdaWindowId;
 
@@ -372,10 +388,11 @@ function executeOnEda(code, windowId) {
     }
 
     const id = randomUUID();
+    const timeoutMs = resolveTimeout(timeout);
     const timer = setTimeout(() => {
       pendingRequests.delete(id);
-      reject(new Error(`Request ${id} timed out after ${REQUEST_TIMEOUT_MS}ms`));
-    }, REQUEST_TIMEOUT_MS);
+      reject(new Error(`Request ${id} timed out after ${timeoutMs}ms (the code may still be running inside EDA; pass a larger "timeout" for long tasks)`));
+    }, timeoutMs);
 
     pendingRequests.set(id, { resolve, reject, timer, windowId: targetWindowId });
 
@@ -471,7 +488,7 @@ ${formatBannerLine('Service ID', SERVICE_ID)}
 ║                                                              ║
 ║  Endpoints:                                                  ║
 ║    GET  /health     - 健康检查 & EDA 连接状态                ║
-║    POST /execute    - 执行代码 {"code": "..."}               ║
+║    POST /execute    - 执行代码 {"code": "...", "timeout"?}   ║
 ║                                                              ║
 ║  Handshake:                                                  ║
 ║    /health returns { service: "${SERVICE_ID}" }       ║

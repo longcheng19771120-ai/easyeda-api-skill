@@ -160,6 +160,19 @@ curl -X POST http://localhost:${BRIDGE_PORT:-49620}/execute \
   -d '{"code": "return await eda.dmt_Project.getCurrentProjectInfo();"}'
 ```
 
+Requests time out after 30 s by default. For long operations (autorouting, DSN export, DRC, batch edits) add
+`"timeout": <ms>` to the body (max `1800000`). A timed-out request may still be running inside EDA, so check the
+document state before retrying.
+
+### 7. PCB autorouting and part lookup
+
+Read [guide/bridge-pcb-workflows.md](guide/bridge-pcb-workflows.md) before autorouting or looking up LCSC parts:
+- Built-in `eda.pcb_Document.autoRouting()` needs a long `timeout`.
+- `scripts/freerouting-autoroute.mjs` routes with a local Freerouting server, passing DSN/SES as text through the
+  bridge (no `File` object needed on the AI side). It deletes unlocked tracks and vias before importing, so confirm
+  with the user first.
+- No API returns stock or price; batch `getByLcscIds` calls and wrap them in a timeout inside the EDA code.
+
 ## API Documentation
 
 The full API reference is in the [references/](references/) directory:
